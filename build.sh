@@ -1,13 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
+set -x
 
-CUDA_HOME=/usr/local/cuda
+CUDA_HOME=/usr/local/cuda-12.9
 CUDA_INCLUDE=${CUDA_HOME}/include
 CUDA_LIB=${CUDA_HOME}/lib64
 COMPAT_INCLUDE=compat/cuda
 
-CLANG=clang++-20
-LLC=$(command -v llc-20 || command -v llc)
+CLANG=./llvm/bin/clang++
+LLC=./llvm/bin/llc
+LLVM_LINK=./llvm/bin/llvm-link
 PTXAS=${CUDA_HOME}/bin/ptxas
 FATBINARY=${CUDA_HOME}/bin/fatbinary
 
@@ -23,7 +25,6 @@ build_device() {
         --cuda-device-only \
         --cuda-gpu-arch=${SM} \
         -nocudalib \
-        -I${COMPAT_INCLUDE} \
         -I${CUDA_INCLUDE} \
         -emit-llvm -S \
         ${SRC} \
@@ -60,7 +61,6 @@ echo "== Compile host side only"
 $CLANG \
     -std=c++20 \
     --cuda-host-only \
-    -I${COMPAT_INCLUDE} \
     -I${CUDA_INCLUDE} \
     -Xclang -fcuda-include-gpubinary \
     -Xclang kernel.fatbin \
