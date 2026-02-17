@@ -1,6 +1,9 @@
 #include <cuda_runtime.h>
 #include <cstdio>
 
+extern "C" __device__ float __nv_erfcinvf(float);
+__device__ float g_libdevice_probe;
+
 #define CUDA_CHECK(call)                                                          \
     do {                                                                          \
         cudaError_t err__ = (call);                                               \
@@ -13,6 +16,7 @@
 
 __global__ void saxpy(float a, float *x, float *y) {
     int i = threadIdx.x;
+    g_libdevice_probe = __nv_erfcinvf(x[i] * 0.25f);
     y[i] = a * x[i] + y[i];
 }
 

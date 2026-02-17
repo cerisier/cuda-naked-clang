@@ -10,8 +10,10 @@ COMPAT_INCLUDE=compat/cuda
 CLANG=./llvm/bin/clang++
 LLC=./llvm/bin/llc
 LLVM_LINK=./llvm/bin/llvm-link
+LLVM_NM=./llvm/bin/llvm-nm
 PTXAS=${CUDA_HOME}/bin/ptxas
 FATBINARY=${CUDA_HOME}/bin/fatbinary
+LIBDEVICE=${CUDA_HOME}/nvvm/libdevice/libdevice.10.bc
 
 SRC=kernel.cu
 SMS=(sm_120 sm_90 sm_80)
@@ -26,15 +28,34 @@ build_device() {
         --cuda-gpu-arch=${SM} \
         -nocudalib \
         -I${CUDA_INCLUDE} \
-        -emit-llvm -S \
+        -emit-llvm -c \
         ${SRC} \
-        -o kernel.${SM}.ll
+        -o kernel.${SM}.bc
+
+    echo "== Validate unresolved libdevice symbol before link (${SM})"
+    if ! $LLVM_NM kernel.${SM}.bc | rg -q " U __nv_erfcinvf$"; then
+        echo "Expected unresolved __nv_erfcinvf in kernel.${SM}.bc"
+        exit 1
+    fi
+
+    echo "== Link libdevice (${SM})"
+    $LLVM_LINK \
+        --only-needed \
+        kernel.${SM}.bc \
+        ${LIBDEVICE} \
+        -o kernel.${SM}.linked.bc
+
+    echo "== Validate linked libdevice symbol (${SM})"
+    if ! $LLVM_NM kernel.${SM}.linked.bc | rg -q " T __nv_erfcinvf$"; then
+        echo "Expected defined __nv_erfcinvf in kernel.${SM}.linked.bc"
+        exit 1
+    fi
 
     echo "== Lower to PTX (${SM})"
     $LLC \
         -march=nvptx64 \
         -mcpu=${SM} \
-        kernel.${SM}.ll \
+        kernel.${SM}.linked.bc \
         -o kernel.${SM}.ptx
 
     echo "== Assemble to cubin (${SM})"
