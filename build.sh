@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 set -euo pipefail
-set -x
 
 CUDA_HOME=/usr/local/cuda-12.9
 CUDA_INCLUDE=${CUDA_HOME}/include
@@ -27,7 +26,9 @@ build_device() {
         --cuda-device-only \
         --cuda-gpu-arch=${SM} \
         -nocudalib \
-        -I${CUDA_INCLUDE} \
+        -nocudainc \
+        -include __clang_cuda_runtime_wrapper.h \
+        -Xclang -internal-isystem -Xclang ${CUDA_INCLUDE} \
         -emit-llvm -c \
         ${SRC} \
         -o kernel.${SM}.bc
