@@ -15,7 +15,7 @@ SM=sm_120
 echo "== Device compile to PTX (${SM})"
 $CLANG \
     -v \
-    --target=nvptx64-nvidia-cuda \
+    --target=nvptx64-unknown-unknown \
     -O3 \
     -S \
     ${DEVICE_SRC} \
